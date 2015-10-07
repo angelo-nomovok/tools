@@ -21,9 +21,25 @@ using std::stringstream;
 namespace nomovok {
 namespace util {
 
+/*
+ * Posix std serial port notes
+ *
+ * Serial can work in
+ *
+ * a) blocking or non blocking
+ *
+ * Blocking is the default, non-blocking can be set with
+ * O_NONBLOCK or O_NDELAY.
+ *
+ * b) canonical (read full lines) or
+ * non-canonical (read single chars)
+ *
+ * This can be set with ICANON in c_flags.
+ */
+
 serial::serial(fLS::clstring& device)
 {
-	fds = open(device.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+	fds = open(device.c_str(), O_RDWR | O_NOCTTY);
 
         if (fds == -1)
         {
@@ -38,8 +54,10 @@ serial::serial(fLS::clstring& device)
         }
         else
         {
-                /* read return immediately (non-blocking) */
-                fcntl(fds, F_SETFL, FNDELAY);
+                /*
+		 * set this if read have to return immediately (non-blocking)
+		 */
+                 // fcntl(fds, F_SETFL, FNDELAY);
 
                 struct termios options;
 
@@ -59,15 +77,22 @@ serial::serial(fLS::clstring& device)
 		/* 8 stop bits */
 		options.c_cflag |= CS8;
 
-		options.c_cflag |= CREAD;
-
                 // turn off s/w flow ctrl
                 options.c_iflag = IGNPAR | IGNBRK;
 
-                options.c_cc[VMIN]=1;
-                options.c_cc[VTIME]=0;
+		/*
+		 * non-canonical read (single char, raw),
+		 * VMIN is the minimum char num to wait / read
+		 */
+                options.c_cc[VMIN] = 1;
+                /*
+		 * VTIME sets the timeout to block (deciseconds)
+		 * but, if set to 0, wait until at lease VMIN is in the
+		 * buffer
+		 */
+		options.c_cc[VTIME] = 0;
 
-                options.c_lflag = 0;
+                options.c_lflag = 0; /* non canonical, ICANON not set */
                 options.c_oflag = 0;
 
                 tcsetattr	(fds, TCSANOW, &options);

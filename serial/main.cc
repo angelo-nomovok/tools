@@ -1,16 +1,18 @@
-// Copyright (C) 2015 Peloton Technology, Inc. - All Rights Reserved
-// Author: Philipp Schrader (philipp@peloton-tech.com)
-//
-// This tool is intended to stress-test the real-time serial performance of a
-// VPC. It does this by saturating the serial port and reading bytes from the
-// same port as fast as it can. It expects the same application to be running
-// on the other end of the serial port. An 8-bit counter value is sent across
-// that the two instances of this tool try to keep in sync. If the counters
-// ever get out of sync, then it quits (or prints an error if
-// "-missed_packets_fatal=false" is passed as an argument).
-//
-// 23.09.2015  modified by A. Dureghello - Nomovok OY
-//
+/*
+ * Copyright (C) 2015 Peloton Technology, Inc. - All Rights Reserved
+ * Author: Philipp Schrader (philipp@peloton-tech.com)
+ *
+ * This tool is intended to stress-test the real-time serial performance of a
+ * VPC. It does this by saturating the serial port and reading bytes from the
+ * same port as fast as it can. It expects the same application to be running
+ * on the other end of the serial port. An 8-bit counter value is sent across
+ * that the two instances of this tool try to keep in sync. If the counters
+ * ever get out of sync, then it quits (or prints an error if
+ * "-missed_packets_fatal=false" is passed as an argument).
+ *
+ * 23.09.2015  - modified by A. Dureghello - Nomovok OY
+ *
+ */
 
 #include <cinttypes>
 #include <csignal>
@@ -19,6 +21,8 @@
 #include <chrono>
 #include <atomic>
 #include <thread>
+#include <iomanip>
+#include <sstream>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -31,18 +35,13 @@
 #include "clock.hh"
 
 DEFINE_string(port, "/dev/ttyS0", "Serial port to send/receive on.");
-
 DEFINE_int32(baud_rate, 115200, "Baud rate at which to send/receive.");
-
 DEFINE_uint64(num_packets, UINT64_MAX, "Number of packets to read/write.");
-
 DEFINE_bool(missed_packets_fatal, true,
             "If true, die on any missed packets.  Otherwise log a warning.");
 
-
 using namespace nomovok;
-
-util::monotonic_clock x;
+using namespace std;
 
 namespace peloton {
 
@@ -82,9 +81,23 @@ public:
 			if (FLAGS_missed_packets_fatal) {
 				CHECK_EQ(counter_, received);
 			} else if (counter_ != received) {
-				LOG(ERROR) << "Missed packet, expected packet "
-					<< static_cast<int>(counter_) << " got "
-					<< static_cast<int>(received);
+				stringstream ss;
+
+				ss << "++ERR: expected "
+					<< dec << setw(4) << setfill(' ')
+					<< static_cast<int>(counter_)
+					<< " ["
+					<< hex << setw(2) << setfill('0')
+					<< (static_cast<int>(counter_) & 0xff)
+					<< "] got "
+					<< dec << setw(4) << setfill(' ')
+					<< static_cast<int>(received)
+					<< " ["
+					<< hex << setw(2) << setfill('0')
+					<< (static_cast<int>(received) & 0xff)
+					<< "]";
+
+				LOG(ERROR) << ss.str();
 			}
 
 			// If we loose a packet we don't want to start generating
@@ -198,8 +211,15 @@ void ReceivePacketsUntilCancelled(UartTester &tester) {
 	}
 }
 
+static ::std::thread trx;
+
 // Signal handler for CTRL-C and such.
-void signal_handler(int signum) { exit_requested = true; }
+void signal_handler(int signum)
+{
+	exit_requested = true;
+
+	pthread_kill(trx.native_handle(), SIGUSR1);
+}
 
 int Main()
 {
@@ -222,11 +242,11 @@ int Main()
 	// maximum number of requested packets.
 	::std::thread thread_tx(
 		SendPacketsUntilCancelled, ::std::ref(tester_tx));
-	::std::thread thread_rx(
+	trx = ::std::thread(
 		ReceivePacketsUntilCancelled, ::std::ref(tester_rx));
 
 	thread_tx.join();
-	thread_rx.join();
+	trx.join();
 
 	const auto end_time = util::monotonic_clock::now();
 

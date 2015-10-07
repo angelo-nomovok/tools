@@ -20,7 +20,7 @@ SRCS:=$(wildcard $(SRCDIR)/*.cc)
 OBJS:=$(patsubst %.cc,%.o,$(SRCS))
 OBJS:=$(patsubst $(SRCDIR)%,$(OBJDIR)%,$(OBJS))
 
-all: $(LIBA) $(LIBSO)
+all: static dynamic
 
 static: $(LIBA)
 dynamic: $(LIBSO)
@@ -30,6 +30,7 @@ $(LIBA): $(OBJS)
 
 $(LIBSO): $(OBJS)
 	g++ -shared -o $(LIBSO) $(OBJS)
+	sudo cp libnutil.so /usr/lib
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cc
 	$(CPP) $(CXXFLAGS) -fPIC $< -o $@
