@@ -137,11 +137,9 @@ void rt_stack_prefault()
  * values are inverted: lower p->prio value means higher priority.
  *
  */
-void rt_set_thread_prio_or_die(int value)
+void rt_set_thread_prio_or_die(pthread_t thread, int value)
 {
 	struct sched_param param;
-
-	rt_set_cpu_limit_or_die(0, cpu_limit_us);
 
         param.sched_priority = value + sched_get_priority_min(SCHED_RR);
 
@@ -149,13 +147,19 @@ void rt_set_thread_prio_or_die(int value)
 	 * we are using thread Posix API, so  pthread_setschedparam should
 	 * be used instead of sched_xxx etc
 	 */
-        if(pthread_setschedparam(pthread_self(), SCHED_RR, &param) == -1) {
+        if(pthread_setschedparam(thread, SCHED_RR, &param) == -1) {
                 perror("set_thread_rt_prio_or_die(): failed");
                 exit(-1);
         }
 
         cout << "rt_set_thread_prio_or_die(): set priority as: "
 		<< param.sched_priority << "\n";
+}
+
+void rt_set_thread_prio_or_die(int value)
+{
+	rt_set_cpu_limit_or_die(0, cpu_limit_us);
+	rt_set_thread_prio_or_die(pthread_self(), value);
 }
 
 /*
