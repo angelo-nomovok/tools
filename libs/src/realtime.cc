@@ -103,7 +103,7 @@ void rt_init()
 	 *
 	 */
 
-	cout << "SCHED_RR allowed priorities are: "
+	cout << "rt_init(): SCHED_RR allowed priorities are: "
 		<< "min:" << sched_get_priority_min(SCHED_RR) << ", "
 		<< "max:" << sched_get_priority_max(SCHED_RR)
 		<< "\n";
@@ -119,9 +119,10 @@ void rt_init()
 
 	getrusage(RUSAGE_SELF, &usage);
 
-	cout << "faults during startup : maj:" << usage.ru_majflt - last_majflt
-             << ", min: " << usage.ru_minflt - last_minflt
-             << "\n";
+	cout << "rt_init(): faults during startup : maj:"
+		<< usage.ru_majflt - last_majflt
+		<< ", min: " << usage.ru_minflt - last_minflt
+		<< "\n";
 
 	last_majflt = usage.ru_majflt;
 	last_minflt = usage.ru_minflt;
@@ -143,6 +144,9 @@ void rt_set_thread_prio_or_die(int value)
                 perror("set_thread_rt_prio_or_die(): failed");
                 exit(-1);
         }
+
+        cout << "rt_set_thread_prio_or_die(): set priority as: "
+		<< param.sched_priority << "\n";
 }
 
 /*
