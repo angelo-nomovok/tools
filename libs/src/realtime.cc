@@ -10,6 +10,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <cinttypes>
 #include <cassert>
 #include <iostream>
@@ -23,16 +24,6 @@
 #include "realtime.hh"
 
 using namespace std;
-
-#define MY_PRIORITY (49) /* we use 49 as the PRREMPT_RT use 50
-                            as the priority of kernel tasklets
-                            and interrupt handler by default */
-
-#define MAX_SAFE_STACK (8*1024) /* The maximum stack size which is
-                                   guaranteed safe to access without
-                                   faulting */
-
-#define NSEC_PER_SEC    (1000000000) /* The number of nsecs per sec. */
 
 namespace nomovok {
 namespace util {
@@ -83,7 +74,7 @@ void rt_init()
                 exit(-2);
         }
 
-        struct sched_param param;
+        rt_stack_prefault();
 
 	/*
 	 * SCHED_FIFO, SCHED_RR have ranges from 1 to 99(higher prio.).
@@ -108,13 +99,6 @@ void rt_init()
 		<< "max:" << sched_get_priority_max(SCHED_RR)
 		<< "\n";
 
-        param.sched_priority = MY_PRIORITY;
-
-        if(sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
-                perror("init_realtime(): sched_setscheduler failed");
-                exit(-1);
-        }
-
         struct rusage usage;
 
 	getrusage(RUSAGE_SELF, &usage);
@@ -128,6 +112,31 @@ void rt_init()
 	last_minflt = usage.ru_minflt;
 }
 
+/*
+ * The maximum stack size which is
+ * guaranteed safe to access without
+ * faulting
+ */
+static const int max_safe_stack = 8 * 1024;
+
+void rt_stack_prefault()
+{
+	unsigned char dummy[max_safe_stack];
+
+        memset(dummy, 0, max_safe_stack);
+
+        return;
+}
+
+/*
+ * From sched.h
+ * ------------
+ * Priority of a process goes from 0..MAX_PRIO-1, valid RT
+ * priority is 0..MAX_RT_PRIO-1, and SCHED_NORMAL/SCHED_BATCH
+ * tasks are in the range MAX_RT_PRIO..MAX_PRIO-1. Priority
+ * values are inverted: lower p->prio value means higher priority.
+ *
+ */
 void rt_set_thread_prio_or_die(int value)
 {
 	struct sched_param param;
