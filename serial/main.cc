@@ -233,7 +233,7 @@ int Main()
 	signal(SIGTERM, signal_handler);
 
 	// Now that we've initialized everything, move over to realtime.
-	util::set_thread_rt_prio_or_die(1);
+	util::rt_set_thread_prio_or_die(1);
 
 	serial_port.flush_input();
 	auto start_time = util::monotonic_clock::now();
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
 {
 	::gflags::SetUsageMessage(::peloton::usage);
 	util::init(&argc, &argv);
-	util::init_realtime();
+	util::rt_init();
 
 	return ::peloton::Main();
 }
