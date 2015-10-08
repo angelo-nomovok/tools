@@ -39,7 +39,7 @@ namespace util {
 
 serial::serial(fLS::clstring& device)
 {
-	fds = open(device.c_str(), O_RDWR | O_NOCTTY);
+	fds = open(device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
 
         if (fds == -1)
         {
@@ -57,8 +57,6 @@ serial::serial(fLS::clstring& device)
                 /*
 		 * set this if read have to return immediately (non-blocking)
 		 */
-                 // fcntl(fds, F_SETFL, FNDELAY);
-
                 struct termios options;
 
                 tcgetattr(fds, &options);
@@ -66,38 +64,27 @@ serial::serial(fLS::clstring& device)
                 memcpy (&oldterm, &options, sizeof(struct termios));
                 memset (&options, 0, sizeof(struct termios));
 
-                options.c_cflag |= (CLOCAL | CREAD);
-                options.c_cflag &= ~CSIZE;
-                // no flow control
-                options.c_cflag &= ~CRTSCTS;
-		/* default parity none */
-                options.c_cflag &= ~(PARODD | PARENB);
-		/* 1 stop bit */
-                options.c_cflag &= ~CSTOPB;
-		/* 8 stop bits */
-		options.c_cflag |= CS8;
-
-                // turn off s/w flow ctrl
-                options.c_iflag = IGNPAR | IGNBRK;
+		cfmakeraw(&options);
 
 		/*
 		 * non-canonical read (single char, raw),
 		 * VMIN is the minimum char num to wait / read
 		 */
-                options.c_cc[VMIN] = 1;
-                /*
+		options.c_cc[VMIN] = 1;
+		/*
 		 * VTIME sets the timeout to block (deciseconds)
 		 * but, if set to 0, wait until at lease VMIN is in the
 		 * buffer
 		 */
-		options.c_cc[VTIME] = 0;
+		options.c_cc[VTIME] = 10;
 
-                options.c_lflag = 0; /* non canonical, ICANON not set */
-                options.c_oflag = 0;
+		options.c_cflag &= ~CSTOPB;
+		options.c_cflag &= ~CRTSCTS;    /* no HW flow control? */
+		options.c_cflag |= CLOCAL | CREAD;
 
-                tcsetattr	(fds, TCSANOW, &options);
-                tcflush		(fds, TCIFLUSH);
-                tcflush         (fds, TCOFLUSH);
+		tcsetattr(fds, TCSANOW, &options);
+		tcflush(fds, TCIFLUSH);
+                tcflush(fds, TCOFLUSH);
         }
 }
 
@@ -119,8 +106,7 @@ void serial::set_speed(speed_t speed)
 	cfsetospeed(&options, speed);
 
 	tcsetattr(fds, TCSANOW, &options);
-	tcflush	(fds, TCIFLUSH);
-
+	tcflush(fds, TCIFLUSH);
 }
 
 void serial::flush_input()
