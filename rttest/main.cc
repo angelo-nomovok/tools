@@ -50,6 +50,7 @@ void* thread_uart_rx(void *arg)
 	util::serial *sp = (util::serial *)arg;
 	int8_t rxchar = 0;
 	int8_t rxnext = 0;
+	static char buff[1024];
 
 	while (!exit_requested) {
 		if (read(sp->fd(), &rxchar, 1) == 1) {
@@ -57,6 +58,8 @@ void* thread_uart_rx(void *arg)
 				printf("err: exp %4d, received %4d\n",
 					rxnext, rxchar
 				);
+				/* try to clear buffer */
+				read(sp->fd(), buff, 1024);
 			}
 			rxnext = rxchar + 1;
 		}
