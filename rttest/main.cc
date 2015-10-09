@@ -264,6 +264,9 @@ int run()
         if (err != 0)
             printf("\ncan't create thread :[%s]\n", strerror(err));
 
+	pthread_join(tid[0], 0);
+	pthread_join(tid[1], 0);
+
 	return 0;
 }
 
