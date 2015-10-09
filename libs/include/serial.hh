@@ -2,7 +2,9 @@
 #define __serial_hh
 
 #include <termios.h>
-#include "gflags/gflags.h"
+#include <string>
+
+using std::string;
 
 namespace nomovok {
 namespace util {
@@ -11,7 +13,7 @@ class serial
 {
 public:
 	serial() {}
-	serial(fLS::clstring&);
+	serial(const string &device);
 	~serial();
 
 	void set_speed(speed_t speed);

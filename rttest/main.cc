@@ -17,15 +17,13 @@
 #include <cinttypes>
 #include <csignal>
 #include <cstdint>
+#include <cstring>
 
 #include <chrono>
 #include <atomic>
 #include <thread>
 #include <iomanip>
 #include <sstream>
-
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 
 #include <unistd.h>
 
@@ -34,16 +32,12 @@
 #include "general.hh"
 #include "clock.hh"
 
-DEFINE_string(port, "/dev/ttyS0", "Serial port to send/receive on.");
-DEFINE_int32(baud_rate, 115200, "Baud rate at which to send/receive.");
-DEFINE_uint64(num_packets, UINT64_MAX, "Number of packets to read/write.");
-DEFINE_bool(missed_packets_fatal, true,
-            "If true, die on any missed packets.  Otherwise log a warning.");
-
 using namespace nomovok;
 using namespace std;
 
 namespace peloton {
+
+#if 0
 
 const char usage[] = "Usage: uart_rt_test <options>";
 
@@ -211,7 +205,11 @@ void ReceivePacketsUntilCancelled(UartTester &tester) {
 	}
 }
 
+#endif
+
 static ::std::thread thread_rx;
+
+static bool exit_requested = false;
 
 // Signal handler for CTRL-C and such.
 void signal_handler(int signum)
@@ -219,37 +217,52 @@ void signal_handler(int signum)
 	exit_requested = true;
 }
 
-int Main()
+void* thread_uart_rx(void *arg)
 {
-	util::serial serial_port(FLAGS_port);
-	serial_port.set_speed(ParseBaudRate(FLAGS_baud_rate));
+	util::serial *sp = (util::serial *)arg;
+	char rxchar = 0;
+	char rxlast;
 
-	UartTester tester_tx(serial_port.fd());
-	UartTester tester_rx(serial_port.fd());
+	while (!exit_requested) {
+		if (read(sp->fd(), &rxchar, 1) == 1) {
+			if ((int)rxchar != (rxlast + 1)) {
+				printf("err: exp %d, received %d\n",
+					(int)rxchar, (int)rxlast
+				);
+			}
+			rxlast = rxchar;
+		}
+	}
+}
+
+void* thread_uart_tx(void *arg)
+{
+	util::serial *sp = (util::serial *)arg;
+
+	while (!exit_requested) {
+
+
+	}
+}
+
+int run()
+{
+	int err;
+	pthread_t tid[2];
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
-	// Now that we've initialized everything, move over to realtime.
-	//util::rt_set_thread_prio_or_die(1);
+	util::serial sp(string("/dev/ttyS0"));
+	sp.set_speed(B115200);
 
-	serial_port.flush_input();
-	auto start_time = util::monotonic_clock::now();
+        err = pthread_create(&(tid[0]), NULL, &thread_uart_rx, &sp);
+        if (err != 0)
+            printf("\ncan't create thread :[%s]\n", strerror(err));
 
-	// Run the tester until the user hits CTRL-C or we've sent/received the
-	// maximum number of requested packets.
-	::std::thread thread_tx(
-		SendPacketsUntilCancelled, ::std::ref(tester_tx));
-	thread_rx = ::std::thread(
-		ReceivePacketsUntilCancelled, ::std::ref(tester_rx));
-
-	thread_tx.join();
-	thread_rx.join();
-
-	const auto end_time = util::monotonic_clock::now();
-
-	PrintResults("TX", start_time, end_time, tester_tx);
-	PrintResults("RX", start_time, end_time, tester_rx);
+	err = pthread_create(&(tid[1]), NULL, &thread_uart_tx, &sp);
+        if (err != 0)
+            printf("\ncan't create thread :[%s]\n", strerror(err));
 
 	return 0;
 }
@@ -258,10 +271,8 @@ int Main()
 
 int main(int argc, char *argv[])
 {
-	::gflags::SetUsageMessage(::peloton::usage);
-	util::init(&argc, &argv);
 	util::rt_init();
 
-	return ::peloton::Main();
+	return peloton::run();
 }
 

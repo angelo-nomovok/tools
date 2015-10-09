@@ -76,6 +76,7 @@ void rt_init()
 
         rt_stack_prefault();
 
+
 	/*
 	 * SCHED_FIFO, SCHED_RR have ranges from 1 to 99(higher prio.).
 	 *

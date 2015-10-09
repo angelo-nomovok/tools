@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+using std::string;
 using std::stringstream;
 
 namespace nomovok {
@@ -37,7 +38,7 @@ namespace util {
  * This can be set with ICANON in c_flags.
  */
 
-serial::serial(fLS::clstring& device)
+serial::serial(const string& device)
 {
 	fds = open(device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
 
