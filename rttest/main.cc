@@ -58,8 +58,7 @@ void* thread_uart_rx(void *arg)
 					rxnext, rxchar
 				);
 			}
-			else
-				rxnext = rxchar + 1;
+			rxnext = rxchar + 1;
 		}
 	}
 }
