@@ -71,9 +71,8 @@ void* thread_uart_rx(void *arg)
 	util::serial *sp = (util::serial *)arg;
 	int8_t rxchar = 0;
 	int8_t rxnext = 0;
-	static char buff[1024];
 
-	setup_thread_stack_minimal(thread_stack_size);
+	//setup_thread_stack_minimal(thread_stack_size);
 
 	while (!exit_requested) {
 		if (read(sp->fd(), &rxchar, 1) == 1) {
@@ -82,7 +81,6 @@ void* thread_uart_rx(void *arg)
 					rxnext, rxchar
 				);
 				/* try to clear buffer */
-				read(sp->fd(), buff, 1024);
 			}
 			rxnext = rxchar + 1;
 		}
@@ -163,10 +161,10 @@ int run(const string& device)
 	sp.set_speed(B115200);
 
 	start_rt_thread(&tid[0], thread_uart_rx, &sp);
-	start_rt_thread(&tid[1], thread_uart_tx, &sp);
+	//start_rt_thread(&tid[1], thread_uart_tx, &sp);
 
 	pthread_join(tid[0], 0);
-	pthread_join(tid[1], 0);
+	//pthread_join(tid[1], 0);
 
 	return 0;
 }

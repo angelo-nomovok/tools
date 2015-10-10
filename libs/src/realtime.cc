@@ -151,7 +151,7 @@ void rt_set_thread_prio_or_die(pthread_t thread, int value)
 		exit(0);
 	}
 
-        param.sched_priority = value + sched_get_priority_min(SCHED_RR);
+        param.sched_priority = value;
 
 	/*
 	 * we are using thread Posix API, so  pthread_setschedparam should
