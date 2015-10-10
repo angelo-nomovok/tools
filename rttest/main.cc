@@ -189,8 +189,7 @@ int main(int argc, char *argv[])
 
 	if (argc == 3) {
 		stringstream ss;
-		int priority;
-
+		
 		ss << argv[2];
 		ss >> priority;
 
