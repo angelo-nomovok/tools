@@ -68,6 +68,8 @@ void rt_init()
 {
 	/*
 	 * 1st - lock memory to stay into RAM, no swap
+	 * avoid page faults and related handling
+	 *
 	 */
         if(mlockall(MCL_CURRENT | MCL_FUTURE) == -1) {
                 perror("init_realtime(): mlockall failed");

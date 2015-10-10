@@ -18,19 +18,23 @@
 #include <csignal>
 #include <cstdint>
 #include <cstring>
-
 #include <chrono>
 #include <atomic>
-#include <thread>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 
 #include <unistd.h>
+#include <pthread.h>
+#include <limits.h>
+#include <sys/utsname.h>
 
 #include "serial.hh"
 #include "realtime.hh"
 #include "general.hh"
 #include "clock.hh"
+
+static const int thread_stack_size = (100*1024);
 
 using namespace nomovok;
 using namespace std;
@@ -66,9 +70,29 @@ void* thread_uart_rx(void *arg)
 	}
 }
 
+
+/*
+ * Be sure all page faults are generated befor use
+ * and avoid default 8MB stack
+ */
+void setup_thread_stack_minimal(int stacksize)
+{
+	volatile char buffer[stacksize];
+	int i;
+
+	/* Prove that this thread is behaving well */
+	for (i = 0; i < stacksize; i += sysconf(_SC_PAGESIZE)) {
+		/* Each write to this buffer shall NOT generate a
+			pagefault. */
+		buffer[i] = i;
+	}
+}
+
 void* thread_uart_tx(void *arg)
 {
 	util::serial *sp = (util::serial *)arg;
+
+	setup_thread_stack_minimal(thread_stack_size);
 
 	while (!exit_requested) {
 
@@ -76,7 +100,57 @@ void* thread_uart_tx(void *arg)
 	}
 }
 
-int run()
+bool is_linux_rt()
+{
+	struct utsname u;
+	char *p;
+	FILE *fd;
+	int rt = 0;
+
+	uname(&u);
+	p = strcasestr(u.version, "PREEMPT RT");
+
+	if ((fd = fopen("/sys/kernel/realtime", "r")) != NULL) {
+		int flag;
+		rt = ((fscanf(fd, "%d", &flag) == 1) && (flag == 1));
+		fclose(fd);
+	}
+
+	fprintf(stderr, "this is a %s kernel\n",
+            (p && rt)  ? "PREEMPT RT" : "vanilla");
+
+	return (p && rt);
+}
+
+/*
+ * Here we create a thread with minimal stack, to leave as much as possible
+ * memory space in physical ram to other applications.
+ */
+
+typedef void *(*start_routine) (void *);
+
+static void start_rt_thread(pthread_t *tid, start_routine run_routine, void *arg)
+{
+	pthread_t thread;
+	pthread_attr_t attr;
+	int err;
+
+	/* init to default values */
+	if (pthread_attr_init(&attr))
+		cout << "++err: start_rt_thread(), can't set attributes";
+	/* Set the requested stacksize for this thread */
+	if (pthread_attr_setstacksize(&attr,
+		PTHREAD_STACK_MIN + thread_stack_size))
+		cout << "++err: start_rt_thread(), can't set stack size";
+	/* And finally start the actual thread */
+	err = pthread_create(tid, &attr, run_routine, arg);
+
+	if (err != 0)
+            cout << "++err: start_rt_thread(), can't create thread :[" <<
+		 strerror(err) << "]\n";
+}
+
+int run(const string& device)
 {
 	int err;
 	pthread_t tid[2];
@@ -84,16 +158,11 @@ int run()
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
-	util::serial sp(string("/dev/ttyS0"));
+	util::serial sp(device);
 	sp.set_speed(B115200);
 
-        err = pthread_create(&(tid[0]), NULL, &thread_uart_rx, &sp);
-        if (err != 0)
-            printf("\ncan't create thread :[%s]\n", strerror(err));
-
-	err = pthread_create(&(tid[1]), NULL, &thread_uart_tx, &sp);
-        if (err != 0)
-            printf("\ncan't create thread :[%s]\n", strerror(err));
+	start_rt_thread(&tid[0], thread_uart_rx, &sp);
+	start_rt_thread(&tid[1], thread_uart_tx, &sp);
 
 	pthread_join(tid[0], 0);
 	pthread_join(tid[1], 0);
@@ -103,10 +172,21 @@ int run()
 
 }  // namespace peloton
 
+void usage()
+{
+	cout << "usage: rtt device\r\n\r\n";
+}
+
 int main(int argc, char *argv[])
 {
-	util::rt_init();
+	if (argc != 2) {
+		usage();
+		exit(0);
+	}
 
-	return peloton::run();
+	if (peloton::is_linux_rt())
+		util::rt_init();
+
+	return peloton::run(argv[1]);
 }
 
