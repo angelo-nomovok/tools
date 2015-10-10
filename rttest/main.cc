@@ -189,11 +189,11 @@ int main(int argc, char *argv[])
 
 	if (argc == 3) {
 		stringstream ss;
-		
+
 		ss << argv[2];
 		ss >> priority;
 
-		if (priority < 2 || priority > 98) {
+		if (priority < 1 || priority > 99) {
 			cout << "++err: invalid priority\n";
 			exit(0);
 		}

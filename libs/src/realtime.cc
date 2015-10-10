@@ -143,6 +143,14 @@ void rt_set_thread_prio_or_die(pthread_t thread, int value)
 
 	/* SCHED_RR, priority min is 1 max is 99 */
 
+	int min = sched_get_priority_min(SCHED_RR);
+	int max = sched_get_priority_max(SCHED_RR);
+
+	if (value < min || value > max) {
+		cout << "++err: wrong priority, exiting\n";
+		exit(0);
+	}
+
         param.sched_priority = value + sched_get_priority_min(SCHED_RR);
 
 	/*
