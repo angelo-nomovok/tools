@@ -28,9 +28,6 @@ using namespace std;
 namespace nomovok {
 namespace util {
 
-int last_majflt = 0;
-int last_minflt = 0;
-
 /*
  * the number of uninterrupted microseconds to let a realtime task run
  * before killing it.
@@ -48,7 +45,7 @@ void rt_set_cpu_limit_or_die(pid_t pid, rlim_t limit)
 	assert(prlimit64(pid, RLIMIT_RTTIME, nullptr, &rl) == 0);
 
 	// Set a CPU limit.
-	rl.rlim_cur = limit;
+	rl.rlim_cur = (limit != 0) ? limit : RLIM_INFINITY;
 	assert(prlimit64(pid, RLIMIT_RTTIME, &rl, nullptr) == 0);
 }
 
@@ -106,13 +103,13 @@ void rt_init()
 
 	getrusage(RUSAGE_SELF, &usage);
 
+	int last_majflt = 0;
+	int last_minflt = 0;
+
 	cout << "rt_init(): faults during startup : maj:"
 		<< usage.ru_majflt - last_majflt
 		<< ", min: " << usage.ru_minflt - last_minflt
 		<< "\n";
-
-	last_majflt = usage.ru_majflt;
-	last_minflt = usage.ru_minflt;
 }
 
 /*
@@ -164,7 +161,7 @@ void rt_set_thread_prio_or_die(pthread_t thread, int value)
 void rt_set_thread_prio_or_die(int value)
 {
 	if (cpu_limit_us)
-		rt_set_cpu_limit_or_die(0, cpu_limit_us);
+		rt_set_cpu_limit_or_die(0, 0);
 	rt_set_thread_prio_or_die(pthread_self(), value);
 }
 
