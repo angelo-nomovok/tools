@@ -175,20 +175,34 @@ int run(const string& device)
 
 void usage()
 {
-	cout << "usage: rtt device\r\n\r\n";
+	cout << "usage: rtt device [prio]\r\n\r\n";
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2) {
+	if (argc <= 1) {
 		usage();
 		exit(0);
 	}
 
+	int priority = 1;
+
+	if (argc == 3) {
+		stringstream ss;
+		int priority;
+
+		ss << argv[2];
+		ss >> priority;
+
+		if (priority < 2 || priority > 98) {
+			cout << "++err: invalid priority\n";
+			exit(0);
+		}
+	}
+
 	if (peloton::is_linux_rt()) {
 		util::rt_init();
-
-		util::rt_set_thread_prio_or_die(97);
+		util::rt_set_thread_prio_or_die(priority);
 	}
 
 	return peloton::run(argv[1]);

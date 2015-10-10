@@ -163,7 +163,8 @@ void rt_set_thread_prio_or_die(pthread_t thread, int value)
 
 void rt_set_thread_prio_or_die(int value)
 {
-	rt_set_cpu_limit_or_die(0, cpu_limit_us);
+	if (cpu_limit_us)
+		rt_set_cpu_limit_or_die(0, cpu_limit_us);
 	rt_set_thread_prio_or_die(pthread_self(), value);
 }
 
