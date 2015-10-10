@@ -184,8 +184,11 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	if (peloton::is_linux_rt())
+	if (peloton::is_linux_rt()) {
 		util::rt_init();
+
+		util::rt_set_thread_prio_or_die(97);
+	}
 
 	return peloton::run(argv[1]);
 }

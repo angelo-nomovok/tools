@@ -144,6 +144,8 @@ void rt_set_thread_prio_or_die(pthread_t thread, int value)
 {
 	struct sched_param param;
 
+	/* SCHED_RR, priority min is 1 max is 99 */
+
         param.sched_priority = value + sched_get_priority_min(SCHED_RR);
 
 	/*
