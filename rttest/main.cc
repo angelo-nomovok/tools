@@ -72,7 +72,7 @@ void* thread_uart_rx(void *arg)
 	int8_t rxchar = 0;
 	int8_t rxnext = 0;
 
-	//setup_thread_stack_minimal(thread_stack_size);
+	setup_thread_stack_minimal(thread_stack_size);
 
 	while (!exit_requested) {
 		if (read(sp->fd(), &rxchar, 1) == 1) {
