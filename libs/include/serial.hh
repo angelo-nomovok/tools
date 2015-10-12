@@ -21,9 +21,12 @@ public:
 	int fd() { return fds; }
 
 	void flush_input();
+	void reset();
+	void open(const string &device);
 
 private:
 	int fds;
+	string _device;
 	struct termios oldterm;
 };
 

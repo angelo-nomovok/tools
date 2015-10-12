@@ -38,9 +38,22 @@ namespace util {
  * This can be set with ICANON in c_flags.
  */
 
-serial::serial(const string& device)
+serial::serial(const string& device) : _device(device)
 {
-	fds = open(device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+	open(device);
+}
+
+serial::~serial()
+{
+	if (fds) {
+		tcsetattr(fds, TCSANOW, &oldterm);
+		close(fds);
+	}
+}
+
+void serial::open(const string &device)
+{
+	fds = ::open(device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
 
         if (fds == -1)
         {
@@ -89,14 +102,6 @@ serial::serial(const string& device)
         }
 }
 
-serial::~serial()
-{
-	if (fds) {
-		tcsetattr(fds, TCSANOW, &oldterm);
-		close(fds);
-	}
-}
-
 void serial::set_speed(speed_t speed)
 {
 	struct termios options;
@@ -113,6 +118,14 @@ void serial::set_speed(speed_t speed)
 void serial::flush_input()
 {
 	tcflush	(fds, TCIFLUSH);
+}
+
+void serial::reset()
+{
+	if (fds) {
+		close(fds);
+		open(_device);
+	}
 }
 
 } /* end of ns util */

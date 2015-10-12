@@ -80,7 +80,15 @@ void* thread_uart_rx(void *arg)
 				printf("err: exp %4d, received %4d\n",
 					rxnext, rxchar
 				);
+
 				/* try to clear buffer */
+				if (rxchar == 0) {
+					/*
+					 * framing error
+					 * trying to handle it in a proper way
+					 */
+					sp->reset();
+				}
 			}
 			rxnext = rxchar + 1;
 		}
@@ -90,12 +98,15 @@ void* thread_uart_rx(void *arg)
 void* thread_uart_tx(void *arg)
 {
 	util::serial *sp = (util::serial *)arg;
+	int8_t counter = 0;
 
 	setup_thread_stack_minimal(thread_stack_size);
 
 	while (!exit_requested) {
-
-
+		if (write(sp->fd(), &counter, 1) != 1) {
+			cout << "failing to send byte.\n";
+		}
+		counter++;
 	}
 }
 
@@ -161,10 +172,10 @@ int run(const string& device)
 	sp.set_speed(B115200);
 
 	start_rt_thread(&tid[0], thread_uart_rx, &sp);
-	//start_rt_thread(&tid[1], thread_uart_tx, &sp);
+	start_rt_thread(&tid[1], thread_uart_tx, &sp);
 
 	pthread_join(tid[0], 0);
-	//pthread_join(tid[1], 0);
+	pthread_join(tid[1], 0);
 
 	return 0;
 }
