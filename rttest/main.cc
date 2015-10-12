@@ -84,8 +84,11 @@ void* thread_uart_rx(void *arg)
 				/* try to clear buffer */
 				if (rxchar == 0) {
 					/*
-					 * framing error
-					 * trying to handle it in a proper way
+					 * A 0 looks like a framing error
+					 * Framing error can be due to issues
+					 * with the transmission media, or
+					 * from clock drifts.
+					 * Trying to handle it in a proper way
 					 */
 					sp->reset();
 				}
@@ -103,10 +106,9 @@ void* thread_uart_tx(void *arg)
 	setup_thread_stack_minimal(thread_stack_size);
 
 	while (!exit_requested) {
-		if (write(sp->fd(), &counter, 1) != 1) {
-			cout << "failing to send byte.\n";
+		if (write(sp->fd(), &counter, 1) == 1) {
+			counter++;
 		}
-		counter++;
 	}
 }
 
