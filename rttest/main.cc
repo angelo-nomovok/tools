@@ -83,6 +83,7 @@ void* thread_uart_rx(void *arg)
 
 				/* try to clear buffer */
 				if (rxchar == 0) {
+					cout << "++err, resetting port\r\n";
 					/*
 					 * A 0 looks like a framing error
 					 * Framing error can be due to issues

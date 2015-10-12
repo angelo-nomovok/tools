@@ -21,13 +21,16 @@ public:
 	int fd() { return fds; }
 
 	void flush_input();
+	void flush_output();
+	void flush();
 	void reset();
 	void open(const string &device);
 
 private:
 	int fds;
-	string _device;
 	struct termios oldterm;
+	string _device;
+	speed_t _speed;
 };
 
 } /* end of ns util */

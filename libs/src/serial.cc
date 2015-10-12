@@ -97,8 +97,8 @@ void serial::open(const string &device)
 		options.c_cflag |= CLOCAL | CREAD;
 
 		tcsetattr(fds, TCSANOW, &options);
-		tcflush(fds, TCIFLUSH);
-                tcflush(fds, TCOFLUSH);
+
+		flush();
         }
 }
 
@@ -106,13 +106,15 @@ void serial::set_speed(speed_t speed)
 {
 	struct termios options;
 
+	_speed = speed;
+
 	tcgetattr(fds, &options);
 
 	cfsetispeed(&options, speed);
 	cfsetospeed(&options, speed);
 
 	tcsetattr(fds, TCSANOW, &options);
-	tcflush(fds, TCIFLUSH);
+	flush();
 }
 
 void serial::flush_input()
@@ -120,11 +122,24 @@ void serial::flush_input()
 	tcflush	(fds, TCIFLUSH);
 }
 
+void serial::flush_output()
+{
+	tcflush	(fds, TCOFLUSH);
+}
+
+void serial::flush()
+{
+	flush_input();
+	flush_output();
+}
+
 void serial::reset()
 {
 	if (fds) {
 		close(fds);
 		open(_device);
+
+		set_speed(_speed);
 	}
 }
 
