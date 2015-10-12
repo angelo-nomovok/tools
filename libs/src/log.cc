@@ -9,22 +9,27 @@
 
 #include <sys/time.h>
 #include <sstream>
+#include <iomanip>
 
 #include "log.hh"
 
-using std::stringstream;
+using namespace std;
 
 namespace nomovok {
 namespace util {
 
 string timestamp()
 {
+	static unsigned long start_secs = 0;
+	static timeval t;
 	stringstream ss;
-	timeval t;
-
+	
         gettimeofday(&t, NULL);
 
-	ss << "[" << t.tv_sec << "." << t.tv_usec << "] ";
+	if (!start_secs) start_secs = t.tv_sec;
+
+	ss << "[" << setw(5) << setfill('0') << (t.tv_sec - start_secs) << "."
+		  << setw(6) << setfill('0') << t.tv_usec << "] ";
 
 	return ss.str();
 }
