@@ -33,6 +33,7 @@
 #include "realtime.hh"
 #include "general.hh"
 #include "clock.hh"
+#include "log.hh"
 
 static const int thread_stack_size = (100*1024);
 
@@ -77,13 +78,14 @@ void* thread_uart_rx(void *arg)
 	while (!exit_requested) {
 		if (read(sp->fd(), &rxchar, 1) == 1) {
 			if (rxchar != rxnext) {
+				cout << util::timestamp();
 				printf("err: exp %4d, received %4d\n",
-					rxnext, rxchar
-				);
+					rxnext, rxchar);
 
 				/* try to clear buffer */
 				if (rxchar == 0) {
-					cout << "++err, resetting port\r\n";
+					cout << util::timestamp()
+						<< "++err, resetting port\r\n";
 					/*
 					 * A 0 looks like a framing error
 					 * Framing error can be due to issues
@@ -210,6 +212,8 @@ int main(int argc, char *argv[])
 			exit(0);
 		}
 	}
+
+	cout << util::timestamp() << "starting ...\r\n";
 
 	if (peloton::is_linux_rt()) {
 		util::rt_init();
